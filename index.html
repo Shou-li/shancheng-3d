@@ -50,7 +50,7 @@ canvas{display:block;touch-action:none}
 </style></head><body>
 <div id="loading">載入地形・衛星・主題圖層中…</div>
 <div id="title" class="panel"><h1>3D山城互動地圖</h1>
-<div class="sub">大甲溪中上游・山城五鄉鎮（東勢・新社・石岡・和平・卓蘭）<br>範圍 120.76–120.99°E, 24.13–24.38°N（約 23 × 28 km）｜約13m網格<br>三種檢視：等高線（河階地貌）／衛星影像（無雲）／主題（建築・道路・農業分布）</div></div>
+<div class="sub">大甲溪中上游・山城五鄉鎮（東勢・新社・石岡・和平・卓蘭）<br>範圍 120.76–120.99°E, 24.13–24.38°N（約 23 × 28 km）｜約13m網格<br>三種檢視：等高線（河階地貌）／衛星影像（無雲）／主題（建築・農業・水圳・道路 分布）</div></div>
 <div id="hover"></div>
 <div id="northbox"><span id="north">N↑</span></div>
 <div id="ctrl" class="panel">
@@ -59,8 +59,7 @@ canvas{display:block;touch-action:none}
   <div id="contopt" class="togs" style="font-size:12px"><label><input type="checkbox" id="ck_lab" checked> 地名</label><label><input type="checkbox" id="ck_road" checked> 道路</label><label><input type="checkbox" id="ck_wat" checked> 水文</label></div>
   <div id="themeopt" class="sec" style="display:none">
     <div class="h">主題圖層</div>
-    <div class="togs" style="font-size:12px"><label><input type="checkbox" id="ck_bld" checked> 建築</label><label><input type="checkbox" id="ck_troad" checked> 道路</label><label><input type="checkbox" id="ck_agri" checked> 農業</label></div>
-    <div style="font-size:12px;margin-top:4px">農業著色：<label style="display:inline"><input type="radio" name="agc" id="agc_multi" checked> 分類</label> <label style="display:inline"><input type="radio" name="agc" id="agc_single"> 單一</label></div>
+    <div class="togs" style="font-size:12px"><label><input type="checkbox" id="ck_bld" checked> 建築</label><label><input type="checkbox" id="ck_agri" checked> 農業</label><label><input type="checkbox" id="ck_canal" checked> 水圳</label><label><input type="checkbox" id="ck_troad"> 道路</label></div>
   </div>
   <label>垂直誇張 <span id="exval">2.0×</span><input type="range" id="ex" min="0.5" max="4" step="0.1" value="2.0"></label>
   <button id="reset" class="full">重設視角</button>
@@ -78,21 +77,16 @@ canvas{display:block;touch-action:none}
   </div>
   <div id="lg_theme" style="display:none">
     <div class="cap">主題圖層</div>
-    <div class="row"><span class="sw" style="background:#c6483a"></span>建築物</div>
+    <div class="row"><span class="sw" style="background:#c64234"></span>建築物（分棟建物框）</div>
+    <div class="row"><span class="sw" style="background:#68a848"></span>農業用地（國土利用調查）</div>
+    <div class="row"><span class="ln" style="border-top-color:#26becd;border-top-width:3px"></span>水圳（人工渠道）</div>
     <div class="row" style="margin-top:6px"><span class="ln" style="border-top-color:#f2782a;border-top-width:5px"></span>主幹道</div>
     <div class="row"><span class="ln" style="border-top-color:#f0cd50;border-top-width:3px"></span>支線道路</div>
     <div class="row"><span class="ln" style="border-top-color:#cdc1a5"></span>巷弄・產業道路</div>
-    <div id="lg_agmulti">
-      <div class="row" style="margin-top:6px"><span class="sw" style="background:#e8963a"></span>果園　<span class="sw" style="background:#96c85c"></span>農田</div>
-      <div class="row"><span class="sw" style="background:#5ac8e1"></span>溫室　<span class="sw" style="background:#ce6ed6"></span>苗圃</div>
-    </div>
-    <div id="lg_agsingle" style="display:none">
-      <div class="row" style="margin-top:6px"><span class="sw" style="background:#78b954"></span>農業區</div>
-    </div>
     <div class="row" style="margin-top:6px"><span class="dot"></span>山城五鄉鎮定位點</div>
   </div>
 </div>
-<div id="src">高程：AWS Terrain Tiles｜衛星：Sentinel-2 cloudless (EOX)｜道路/水文/建築/農業：OpenStreetMap｜製作：Claude × 葉守禮，2026-07</div>
+<div id="src">高程：AWS Terrain Tiles｜衛星：Sentinel-2 cloudless (EOX)｜農業/建物：內政部國土測繪中心 國土利用調查｜道路/水文/水圳：OpenStreetMap｜製作：Claude × 葉守禮，2026-07</div>
 <script>/**
  * @license
  * Copyright 2010-2021 Three.js Authors
@@ -1270,8 +1264,8 @@ function overlay(url){
     polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
   var mo=new THREE.Mesh(geoTop,m); mo.renderOrder=6; mo.visible=false; mo.frustumCulled=false; scene.add(mo); return mo;
 }
-var moAgriMulti=overlay('th_agri_multi.png'); moAgriMulti.renderOrder=5;
-var moAgriSingle=overlay('th_agri_single.png'); moAgriSingle.renderOrder=5;
+var moAgri=overlay('th_agri.png'); moAgri.renderOrder=5;
+var moCanal=overlay('th_canal.png'); moCanal.renderOrder=6;
 var moRoad=overlay('th_road.png'); moRoad.renderOrder=7;
 var moBld=overlay('th_bld.png'); moBld.renderOrder=8;
 var controls=new THREE.OrbitControls(camera,renderer.domElement);
@@ -1342,11 +1336,10 @@ MARKERS.forEach(function(m){
   SKIP[town]=1; SKIP[town+'區']=1; SKIP[town+'鎮']=1;
 });
 /* generic OSM place labels (skip names clashing with the five markers) */
+/* 只保留紅點五鎮（tier0）＋各式小地名（tier2，拉近才顯示）；不設中間階層 */
 VECT.places.forEach(function(p){
   if(SKIP[p.n]) return;
-  if(p.c==='big') addLabel(p.n,p.lon,p.lat,48,'#33240f',1.24,1.0,1);
-  else if(p.c==='mid') addLabel(p.n,p.lon,p.lat,42,'#26200f',1.02,0.80,1);
-  else addLabel(p.n,p.lon,p.lat,32,'#20242c',0.70,0.52,2);
+  addLabel(p.n,p.lon,p.lat,32,'#20242c',0.72,0.54,2);
 });
 /* exaggeration */
 var EX=2.0;
@@ -1408,19 +1401,14 @@ addEventListener('keydown',function(e){ var k=e.key,mv=new THREE.Vector3(); var 
 var bCont=document.getElementById('mode_cont'),bSat=document.getElementById('mode_sat'),bTheme=document.getElementById('mode_theme');
 var legend=document.getElementById('legend'),lgHyps=document.getElementById('lg_hyps'),lgTheme=document.getElementById('lg_theme');
 var contopt=document.getElementById('contopt'),themeopt=document.getElementById('themeopt');
-var ckBld=document.getElementById('ck_bld'),ckTroad=document.getElementById('ck_troad'),ckAgri=document.getElementById('ck_agri');
-var agcMulti=document.getElementById('agc_multi'),agcSingle=document.getElementById('agc_single');
-var lgAgMulti=document.getElementById('lg_agmulti'),lgAgSingle=document.getElementById('lg_agsingle');
+var ckBld=document.getElementById('ck_bld'),ckTroad=document.getElementById('ck_troad'),ckAgri=document.getElementById('ck_agri'),ckCanal=document.getElementById('ck_canal');
 var mode='cont';
 function applyThemeToggles(){
   var th=(mode==='theme');
   moBld.visible = th && ckBld.checked;
   moRoad.visible = th && ckTroad.checked;
-  var multi=agcMulti.checked;
-  moAgriMulti.visible = th && ckAgri.checked && multi;
-  moAgriSingle.visible = th && ckAgri.checked && !multi;
-  lgAgMulti.style.display = multi?'block':'none';
-  lgAgSingle.style.display = multi?'none':'block';
+  moAgri.visible = th && ckAgri.checked;
+  moCanal.visible = th && ckCanal.checked;
 }
 function setMode(m){ mode=m;
   bCont.classList.toggle('on',m==='cont'); bSat.classList.toggle('on',m==='sat'); bTheme.classList.toggle('on',m==='theme');
@@ -1439,7 +1427,7 @@ function setMode(m){ mode=m;
 bCont.addEventListener('click',function(){ setMode('cont'); });
 bSat.addEventListener('click',function(){ setMode('sat'); });
 bTheme.addEventListener('click',function(){ setMode('theme'); });
-[ckBld,ckTroad,ckAgri,agcMulti,agcSingle].forEach(function(el){ el.addEventListener('change',applyThemeToggles); });
+[ckBld,ckTroad,ckAgri,ckCanal].forEach(function(el){ el.addEventListener('change',applyThemeToggles); });
 var northEl=document.getElementById('north');
 addEventListener('resize',function(){ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
 var loadEl=document.getElementById('loading');
