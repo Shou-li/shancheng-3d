@@ -35,7 +35,7 @@ canvas{display:block;touch-action:none}
 #src{position:fixed;bottom:2px;left:50%;transform:translateX(-50%);font-size:10px;color:#66708a;z-index:10}
 #loading{position:fixed;inset:0;background:#0e1420;display:flex;align-items:center;justify-content:center;font-size:16px;color:#aab4c8;z-index:99}
 .tog{display:block;box-sizing:border-box;width:100%;background:#2a3a5c;color:#e8e8e8;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 0;font-family:inherit;font-size:12px;margin-bottom:8px;cursor:pointer}
-.panel.mini{padding:3px;width:auto !important;min-width:0;max-width:none}
+.panel.mini{padding:3px !important;width:64px !important;min-width:0}
 .panel.mini > *:not(.tog){display:none}
 .panel.mini .tog{margin-bottom:0;width:auto;border:none;background:none;padding:2px 8px;font-size:13px}
 @media (pointer:coarse),(max-width:600px){
@@ -65,7 +65,7 @@ canvas{display:block;touch-action:none}
   </div>
   <label>垂直誇張 <span id="exval">2.0×</span><input type="range" id="ex" min="0.5" max="4" step="0.1" value="2.0"></label>
   <button id="reset" class="full">重設視角</button>
-  <div class="hint">左鍵拖曳＝旋轉｜滾輪＝縮放｜右鍵或方向鍵＝平移</div>
+  <div class="hint">左鍵拖曳＝旋轉｜滾輪＝縮放｜右鍵或方向鍵＝平移｜雙擊＝飛到定點</div>
 </div>
 <div id="legend" class="panel">
   <button class="tog" id="tog_legend">圖例 ▾</button>
@@ -1157,8 +1157,8 @@ var DEM_PNG="iVBORw0KGgoAAAANSUhEUgAABwgAAAhUCAIAAAAq9bq0AAEAAElEQVR42qz97XIkyZI
 var W=META.W,H=META.H,KX=META.km_x,KY=META.km_y,EMIN=META.emin,EMAX=META.emax;
 var isMobile=(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches)||Math.min(innerWidth,innerHeight)<640;
 (function(){var h=document.querySelector('#ctrl .hint'); if(h){ h.innerHTML = isMobile
-  ? '操作：單指拖曳＝旋轉，雙指＝縮放/平移，點一下地表看海拔・坡度。上方鈕切換等高線／衛星／主題。'
-  : '操作：左鍵拖曳＝旋轉，滾輪＝縮放，右鍵或方向鍵＝平移，滑鼠停在地表看海拔・坡度。上方鈕切換三種檢視。'; }})();
+  ? '操作：單指拖曳＝旋轉，雙指＝縮放/平移，雙擊地表＝飛到該點，點一下地表看海拔・坡度。上方鈕切換等高線／衛星／主題。'
+  : '操作：左鍵拖曳＝旋轉，滾輪＝縮放，右鍵或方向鍵＝平移，<b>雙擊地表＝飛到該點</b>，滑鼠停在地表看海拔・坡度。上方鈕切換三種檢視。'; }})();
 function boot(heights){
 var minElev=1e9,maxElev=-1e9;
 for(var k=0;k<W*H;k++){ var e=heights[k]; if(e<minElev)minElev=e; if(e>maxElev)maxElev=e; }
@@ -1255,7 +1255,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,isMobile?1.5:2)); renderer.setS
 renderer.outputEncoding=THREE.sRGBEncoding; document.body.appendChild(renderer.domElement);
 var maxAniso=renderer.capabilities.getMaxAnisotropy();
 function npotSafe(t){ t.generateMipmaps=false; t.minFilter=THREE.LinearFilter; t.magFilter=THREE.LinearFilter; t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.ClampToEdgeWrapping; return t; }
-var TV='?v=9';
+var TV='?v=10';
 var mat_base=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.96,metalness:0.0});
 var mat_sat=new THREE.MeshStandardMaterial({map:null,color:0x2a2a2a,roughness:0.98,metalness:0.0});
 var satLoaded=false;
