@@ -1254,25 +1254,32 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,isMobile?1.5:2)); renderer.setS
 renderer.outputEncoding=THREE.sRGBEncoding; document.body.appendChild(renderer.domElement);
 var maxAniso=renderer.capabilities.getMaxAnisotropy();
 function npotSafe(t){ t.generateMipmaps=false; t.minFilter=THREE.LinearFilter; t.magFilter=THREE.LinearFilter; t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.ClampToEdgeWrapping; return t; }
-var tex=new THREE.TextureLoader().load('sat.jpg');
-tex.flipY=false; tex.encoding=THREE.sRGBEncoding; tex.anisotropy=maxAniso; npotSafe(tex);
+var TV='?v=7';
 var mat_base=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.96,metalness:0.0});
-var mat_sat=new THREE.MeshStandardMaterial({map:tex,roughness:0.98,metalness:0.0});
+var mat_sat=new THREE.MeshStandardMaterial({map:null,color:0x2a2a2a,roughness:0.98,metalness:0.0});
+var satLoaded=false;
+function ensureSat(){ if(satLoaded)return; satLoaded=true;
+  var t=new THREE.TextureLoader().load('sat.jpg'+TV,undefined,undefined,function(){console.warn('SAT texture failed to load');});
+  t.flipY=false; t.encoding=THREE.sRGBEncoding; t.anisotropy=maxAniso; npotSafe(t);
+  mat_sat.map=t; mat_sat.color.set(0xffffff); mat_sat.needsUpdate=true; }
 var mesh=new THREE.Mesh(geo,mat_base); scene.add(mesh);
 scene.add(new THREE.AmbientLight(0xffffff,0.55));
 var sun=new THREE.DirectionalLight(0xfff4e0,0.85); sun.position.set(30,30,-26); scene.add(sun);
 var fill=new THREE.DirectionalLight(0x8899bb,0.20); fill.position.set(-25,20,30); scene.add(fill);
 /* theme overlay meshes (share geoTop, transparent textures, polygonOffset) */
-function loadTex(url){ var t=new THREE.TextureLoader().load(url); t.flipY=false; t.encoding=THREE.sRGBEncoding; t.anisotropy=maxAniso; npotSafe(t); return t; }
+function loadTex(url){ var t=new THREE.TextureLoader().load(url,undefined,undefined,function(){console.warn('overlay texture failed: '+url);}); t.flipY=false; t.encoding=THREE.sRGBEncoding; t.anisotropy=maxAniso; npotSafe(t); return t; }
 function overlay(url){
-  var m=new THREE.MeshBasicMaterial({map:loadTex(url),transparent:true,depthWrite:false,
+  var m=new THREE.MeshBasicMaterial({map:null,transparent:true,depthWrite:false,
     polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
-  var mo=new THREE.Mesh(geoTop,m); mo.renderOrder=6; mo.visible=false; mo.frustumCulled=false; scene.add(mo); return mo;
+  var mo=new THREE.Mesh(geoTop,m); mo.renderOrder=6; mo.visible=false; mo.frustumCulled=false; mo.userData.url=url; scene.add(mo); return mo;
 }
 var moAgri=overlay('th_agri.png'); moAgri.renderOrder=5;
 var moCanal=overlay('th_canal.png'); moCanal.renderOrder=6;
 var moRoad=overlay('th_road.png'); moRoad.renderOrder=7;
 var moBld=overlay('th_bld.png'); moBld.renderOrder=8;
+var overlaysLoaded=false;
+function ensureOverlays(){ if(overlaysLoaded)return; overlaysLoaded=true;
+  [moAgri,moCanal,moRoad,moBld].forEach(function(mo){ mo.material.map=loadTex(mo.userData.url+TV); mo.material.needsUpdate=true; }); }
 var controls=new THREE.OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true; controls.dampingFactor=0.08; controls.maxPolarAngle=Math.PI*0.44;
 controls.minDistance=0.4; controls.maxDistance=140; controls.panSpeed=1.8; controls.zoomSpeed=2.2;
@@ -1334,10 +1341,9 @@ function addGroundMarker(lon,lat){ var x=lonToX(lon),z=latToZ(lat); if(!inside(x
 /* five 山城五鄉鎮 markers (tier0, always shown) */
 var SKIP={};
 MARKERS.forEach(function(m){
-  var town=m[0],landmark=m[1],lat=m[2],lon=m[3];
+  var town=m[0],lat=m[2],lon=m[3];
   addGroundMarker(lon,lat);
   addLabel(town,lon,lat,54,'#a80000',1.42,1.16,0);
-  addLabel(landmark,lon,lat,30,'#5a2a10',0.66,0.60,0);
   SKIP[town]=1; SKIP[town+'區']=1; SKIP[town+'鎮']=1;
 });
 /* generic OSM place labels (skip names clashing with the five markers) */
@@ -1358,7 +1364,7 @@ function makeShield(ref){
   ctx.fillText(ref,s*0.5,s*0.62);
   var t=new THREE.CanvasTexture(cv); t.minFilter=THREE.LinearFilter; t.encoding=THREE.sRGBEncoding;
   var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false,transparent:true,sizeAttenuation:false}));
-  sp.scale.set(0.05,0.05,1); sp.renderOrder=1005; return sp;
+  sp.scale.set(0.032,0.032,1); sp.renderOrder=1005; return sp;
 }
 SHIELDS.forEach(function(sh){
   var x=lonToX(sh.lon),z=latToZ(sh.lat); if(!inside(x,z))return;
@@ -1451,10 +1457,10 @@ function setMode(m){ mode=m;
   if(m==='cont'){ geo.setAttribute('color',colAttrHyps); colAttrHyps.needsUpdate=true; mesh.material=mat_base; mesh.visible=true;
     gVect.visible=true; contopt.style.display='block'; themeopt.style.display='none';
     legend.style.display='block'; lgHyps.style.display='block'; lgTheme.style.display='none';
-  } else if(m==='sat'){ mesh.material=mat_sat; mesh.visible=true;
+  } else if(m==='sat'){ ensureSat(); mesh.material=mat_sat; mesh.visible=true;
     gVect.visible=false; contopt.style.display='none'; themeopt.style.display='none';
     legend.style.display='none';
-  } else { geo.setAttribute('color',colAttrGrey); colAttrGrey.needsUpdate=true; mesh.material=mat_base; mesh.visible=true;
+  } else { ensureOverlays(); geo.setAttribute('color',colAttrGrey); colAttrGrey.needsUpdate=true; mesh.material=mat_base; mesh.visible=true;
     gVect.visible=false; contopt.style.display='none'; themeopt.style.display='block';
     legend.style.display='block'; lgHyps.style.display='none'; lgTheme.style.display='block';
   }
