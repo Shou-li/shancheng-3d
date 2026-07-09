@@ -2,6 +2,13 @@
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <title>3D山城互動地圖 — 大甲溪河階・山城五鄉鎮</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="description" content="大甲溪中上游山城五鄉鎮（東勢・新社・石岡・和平・卓蘭）3D 地形互動地圖：等高線、衛星、主題（農業・建築・水圳・道路・廟宇・農會・資材行）三種檢視。">
+<meta property="og:title" content="3D山城互動地圖 — 大甲溪河階・山城五鄉鎮">
+<meta property="og:description" content="等高線・衛星・主題三檢視：大甲溪河階地形、白冷圳等灌溉水圳網絡、農業地景與地方後勤網絡。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://shou-li.github.io/shancheng-3d/">
+<meta property="og:image" content="https://shou-li.github.io/shancheng-3d/preview.jpg">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>⛰️</text></svg>">
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:#0e1420;font-family:'Microsoft JhengHei','PingFang TC',sans-serif;color:#e8e8e8;touch-action:none}
 canvas{display:block;touch-action:none}
@@ -34,6 +41,7 @@ canvas{display:block;touch-action:none}
 #north{font-weight:bold;color:#ff8a7a;font-size:15px}
 #src{position:fixed;bottom:2px;left:50%;transform:translateX(-50%);font-size:10px;color:#66708a;z-index:10}
 #loading{position:fixed;inset:0;background:#0e1420;display:flex;align-items:center;justify-content:center;font-size:16px;color:#aab4c8;z-index:99}
+#toast{position:fixed;bottom:56px;left:50%;transform:translateX(-50%);display:none;background:rgba(16,22,36,.9);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 14px;font-size:12.5px;color:#dbe3f5;z-index:60}
 .tog{display:block;box-sizing:border-box;width:100%;background:#2a3a5c;color:#e8e8e8;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 0;font-family:inherit;font-size:12px;margin-bottom:8px;cursor:pointer}
 .panel.mini{padding:3px !important;width:64px !important;min-width:0}
 .panel.mini > *:not(.tog){display:none}
@@ -53,6 +61,7 @@ canvas{display:block;touch-action:none}
 }
 </style></head><body>
 <div id="loading">載入地形・衛星・主題圖層中…</div>
+<div id="toast"></div>
 <div id="title" class="panel"><h1>3D山城互動地圖</h1></div>
 <div id="hover"></div>
 <div id="northbox"><span id="north">N↑</span></div>
@@ -92,7 +101,7 @@ canvas{display:block;touch-action:none}
     <div class="row"><span class="dot"></span>山城五鄉鎮定位點</div>
   </div>
 </div>
-<div id="src">高程：AWS Terrain Tiles｜衛星：Sentinel-2 cloudless (EOX)｜農業/建物：內政部國土測繪中心｜道路/水文：OpenStreetMap｜灌溉圳路：農田水利署｜製作：Claude × 葉守禮，2026</div>
+<div id="src">高程：AWS Terrain Tiles｜衛星：Sentinel-2 cloudless (EOX)｜農業/建物：內政部國土測繪中心｜道路/水文：OpenStreetMap｜灌溉圳路：農田水利署｜圖資擷取 2026-07｜製作：Claude × 葉守禮，2026</div>
 <script>/**
  * @license
  * Copyright 2010-2021 Three.js Authors
@@ -1256,17 +1265,23 @@ geoTop.setIndex(new THREE.BufferAttribute(index.slice(0,terrTri),1));
 var scene=new THREE.Scene(); scene.background=new THREE.Color(0x0e1420);
 scene.fog=new THREE.Fog(0x0e1420,70,190);
 var camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.1,700);
-var renderer=new THREE.WebGLRenderer({antialias:!isMobile});
+var toastEl=document.getElementById('toast'),toastT=null;
+function toast(msg,ms){ toastEl.textContent=msg; toastEl.style.display='block'; clearTimeout(toastT); if(ms) toastT=setTimeout(function(){toastEl.style.display='none';},ms); }
+function toastHide(){ clearTimeout(toastT); toastEl.style.display='none'; }
+var renderer;
+try{ renderer=new THREE.WebGLRenderer({antialias:!isMobile}); }
+catch(e){ var le0=document.getElementById('loading'); if(le0) le0.textContent='此裝置或瀏覽器不支援 WebGL，無法顯示 3D 地圖（請改用較新版 Chrome／Edge／Safari）'; throw e; }
+renderer.domElement.addEventListener('webglcontextlost',function(ev){ ev.preventDefault(); toast('3D 顯示資源被系統回收，請重新整理頁面'); },false);
 renderer.setPixelRatio(Math.min(devicePixelRatio,isMobile?1.5:2)); renderer.setSize(innerWidth,innerHeight);
 renderer.outputEncoding=THREE.sRGBEncoding; document.body.appendChild(renderer.domElement);
 var maxAniso=renderer.capabilities.getMaxAnisotropy();
 function npotSafe(t){ t.generateMipmaps=false; t.minFilter=THREE.LinearFilter; t.magFilter=THREE.LinearFilter; t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.ClampToEdgeWrapping; return t; }
-var TV='?v=14';
+var TV='?v=15';
 var mat_base=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.96,metalness:0.0});
 var mat_sat=new THREE.MeshStandardMaterial({map:null,color:0x2a2a2a,roughness:0.98,metalness:0.0});
 var satLoaded=false;
-function ensureSat(){ if(satLoaded)return; satLoaded=true;
-  var t=new THREE.TextureLoader().load('sat.jpg'+TV,undefined,undefined,function(){console.warn('SAT texture failed to load');});
+function ensureSat(){ if(satLoaded)return; satLoaded=true; toast('衛星影像載入中…');
+  var t=new THREE.TextureLoader().load('sat.jpg'+TV,function(){toastHide();},undefined,function(){console.warn('SAT texture failed to load'); toast('衛星影像載入失敗，請檢查網路後重新整理',6000);});
   t.flipY=false; t.encoding=THREE.sRGBEncoding; t.anisotropy=maxAniso; npotSafe(t);
   mat_sat.map=t; mat_sat.color.set(0xffffff); mat_sat.needsUpdate=true; }
 var mesh=new THREE.Mesh(geo,mat_base); scene.add(mesh);
@@ -1274,7 +1289,7 @@ scene.add(new THREE.AmbientLight(0xffffff,0.55));
 var sun=new THREE.DirectionalLight(0xfff4e0,0.85); sun.position.set(30,30,-26); scene.add(sun);
 var fill=new THREE.DirectionalLight(0x8899bb,0.20); fill.position.set(-25,20,30); scene.add(fill);
 /* theme overlay meshes (share geoTop, transparent textures, polygonOffset) */
-function loadTex(url){ var t=new THREE.TextureLoader().load(url,undefined,undefined,function(){console.warn('overlay texture failed: '+url);}); t.flipY=false; t.encoding=THREE.sRGBEncoding; t.anisotropy=maxAniso; npotSafe(t); return t; }
+function loadTex(url){ var t=new THREE.TextureLoader().load(url,function(){toastHide();},undefined,function(){console.warn('overlay texture failed: '+url); toast('主題圖層載入失敗，請檢查網路後重新整理',6000);}); t.flipY=false; t.encoding=THREE.sRGBEncoding; t.anisotropy=maxAniso; npotSafe(t); return t; }
 function overlay(url){
   var m=new THREE.MeshBasicMaterial({map:null,transparent:true,depthWrite:false,
     polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
@@ -1285,7 +1300,7 @@ var moCanal=overlay('th_canal.png'); moCanal.renderOrder=9;
 var moRoad=overlay('th_road.png'); moRoad.renderOrder=7;
 var moBld=overlay('th_bld.png'); moBld.renderOrder=8; moBld.material.opacity=0.55; moBld.material.color.setRGB(0.88,0.91,1.0); moBld.material.color.convertSRGBToLinear();
 var overlaysLoaded=false;
-function ensureOverlays(){ if(overlaysLoaded)return; overlaysLoaded=true;
+function ensureOverlays(){ if(overlaysLoaded)return; overlaysLoaded=true; toast('主題圖層載入中…');
   [moAgri,moCanal,moRoad,moBld].forEach(function(mo){ mo.material.map=loadTex(mo.userData.url+TV); mo.material.needsUpdate=true; }); }
 var controls=new THREE.OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true; controls.dampingFactor=0.13; controls.maxPolarAngle=Math.PI*0.43; controls.screenSpacePanning=true;
