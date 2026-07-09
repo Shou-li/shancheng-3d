@@ -1261,7 +1261,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,isMobile?1.5:2)); renderer.setS
 renderer.outputEncoding=THREE.sRGBEncoding; document.body.appendChild(renderer.domElement);
 var maxAniso=renderer.capabilities.getMaxAnisotropy();
 function npotSafe(t){ t.generateMipmaps=false; t.minFilter=THREE.LinearFilter; t.magFilter=THREE.LinearFilter; t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.ClampToEdgeWrapping; return t; }
-var TV='?v=13';
+var TV='?v=14';
 var mat_base=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.96,metalness:0.0});
 var mat_sat=new THREE.MeshStandardMaterial({map:null,color:0x2a2a2a,roughness:0.98,metalness:0.0});
 var satLoaded=false;
@@ -1281,9 +1281,9 @@ function overlay(url){
   var mo=new THREE.Mesh(geoTop,m); mo.renderOrder=6; mo.visible=false; mo.frustumCulled=false; mo.userData.url=url; scene.add(mo); return mo;
 }
 var moAgri=overlay('th_agri.png'); moAgri.renderOrder=5;
-var moCanal=overlay('th_canal.png'); moCanal.renderOrder=6;
+var moCanal=overlay('th_canal.png'); moCanal.renderOrder=9;
 var moRoad=overlay('th_road.png'); moRoad.renderOrder=7;
-var moBld=overlay('th_bld.png'); moBld.renderOrder=8;
+var moBld=overlay('th_bld.png'); moBld.renderOrder=8; moBld.material.opacity=0.55; moBld.material.color.setRGB(0.88,0.91,1.0); moBld.material.color.convertSRGBToLinear();
 var overlaysLoaded=false;
 function ensureOverlays(){ if(overlaysLoaded)return; overlaysLoaded=true;
   [moAgri,moCanal,moRoad,moBld].forEach(function(mo){ mo.material.map=loadTex(mo.userData.url+TV); mo.material.needsUpdate=true; }); }
@@ -1396,18 +1396,22 @@ function makePoiDisc(hex,rad){
   g.add(ring); g.add(dot); return g;
 }
 var poiItems=[];
-function buildPoi(list,hex,rad,labeled){
+function buildPoi(list,hex,rad,labeled,labD,cell){
   var grp=new THREE.Group(); scene.add(grp); grp.visible=false;
+  var occ={};
   list.forEach(function(p){ var x=lonToX(p.lon),z=latToZ(p.lat); if(!inside(x,z))return;
     var d=makePoiDisc(hex,rad); grp.add(d);
-    var lab=null; if(labeled&&p.n){ lab=makeSprite(p.n,26,'#20242c',0.58); grp.add(lab); }
-    poiItems.push({obj:d,lab:lab,x:x,z:z,ground:sampleElev(x,z)});
+    var lab=null;
+    if(labeled&&p.n){ var ok=true;
+      if(cell){ var ck=Math.floor(x/cell)+'_'+Math.floor(z/cell); if(occ[ck])ok=false; else occ[ck]=1; }
+      if(ok){ lab=makeSprite(p.n,22,'#20242c',0.50); grp.add(lab); } }
+    poiItems.push({obj:d,lab:lab,x:x,z:z,ground:sampleElev(x,z),labD:labD||32});
   });
   return grp;
 }
 var gTemple=buildPoi(POI_TEMPLE,0xb5322a,0.026,false);
-var gNonghui=buildPoi(POI_NONGHUI,0x2e9b40,0.05,true);
-var gSupply=buildPoi(POI_SUPPLY,0xe0821e,0.05,true);
+var gNonghui=buildPoi(POI_NONGHUI,0x2e9b40,0.05,true,32);
+var gSupply=buildPoi(POI_SUPPLY,0xe0821e,0.05,true,15,0.45);
 /* exaggeration */
 var EX=2.0;
 function applyExaggeration(withNormals){
@@ -1524,7 +1528,7 @@ function updateLOD(){ var d=camera.position.distanceTo(controls.target);
   for(var li=0;li<labelItems.length;li++){ var t=labelItems[li].tier; labelItems[li].sp.visible=(t===0)||(t===1&&d<95)||(t===2&&d<13); }
   for(var gi=0;gi<groundMarkers.length;gi++) groundMarkers[gi].obj.visible=(d<55);
   for(var ci=0;ci<canalLabelItems.length;ci++) canalLabelItems[ci].sp.visible=(d<24);
-  for(var pi2=0;pi2<poiItems.length;pi2++){ if(poiItems[pi2].lab) poiItems[pi2].lab.visible=(d<32); } }
+  for(var pi2=0;pi2<poiItems.length;pi2++){ if(poiItems[pi2].lab) poiItems[pi2].lab.visible=(d<poiItems[pi2].labD); } }
 setMode('cont');
 (function animate(){ requestAnimationFrame(animate);
   if(fly.active){ fly.t+=1/(60*fly.dur); var k=fly.t>=1?1:fly.t; var e=k<0.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
