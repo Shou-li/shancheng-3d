@@ -1476,7 +1476,7 @@ var gPeaks=new THREE.Group(); scene.add(gPeaks); gPeaks.visible=false;
 var peakItems=[];
 PEAKS.forEach(function(p){ var x=lonToX(p.lon),z=latToZ(p.lat); if(!inside(x,z))return;
   var sp=makeSprite('▲'+p.n+' '+p.ele,38,'#5d4014',0.80); gPeaks.add(sp);
-  peakItems.push({sp:sp,x:x,z:z,ground:sampleElev(x,z),tier:(p.ele>=2000?0:(p.ele>=1200?1:2))});
+  peakItems.push({sp:sp,x:x,z:z,ground:sampleElev(x,z),tier:(p.ele>=2000?0:(p.ele>=1200?1:2)),ele:p.ele,hw:(10+('▲'+p.n+' '+p.ele).length*6)});
 });
 /* POI theme point layers: 廟宇 / 農會 / 資材行 */
 function makePoiDisc(hex,rad){
@@ -1639,7 +1639,7 @@ function updateLOD(){ var d=camera.position.distanceTo(controls.target);
   for(var li=0;li<labelItems.length;li++){ var t=labelItems[li].tier; labelItems[li].sp.visible=(t===0)||(t===1&&d<95)||(t===2&&d<13); }
   for(var gi=0;gi<groundMarkers.length;gi++) groundMarkers[gi].obj.visible=(d<55);
   for(var ci=0;ci<canalLabelItems.length;ci++) canalLabelItems[ci].sp.visible=(d<24);
-  for(var pk=0;pk<peakItems.length;pk++){ var pt2=peakItems[pk].tier; peakItems[pk].sp.visible=(pt2===0)||(pt2===1&&d<40)||(pt2===2&&d<16); }
+  var _pv=new THREE.Vector3(),_cand=[],_shp=[]; for(var pk=0;pk<peakItems.length;pk++){ var it=peakItems[pk], pt2=it.tier; var base=(pt2===0)||(pt2===1&&d<40)||(pt2===2&&d<16); if(!base){ it.sp.visible=false; continue; } _pv.copy(it.sp.position).project(camera); if(_pv.z>1){ it.sp.visible=false; continue; } it._sx=(_pv.x*0.5+0.5)*innerWidth; it._sy=(-_pv.y*0.5+0.5)*innerHeight; _cand.push(it); } _cand.sort(function(a,b){return b.ele-a.ele;}); for(var ci=0;ci<_cand.length;ci++){ var it2=_cand[ci], clash=false; for(var si=0;si<_shp.length;si++){ var o=_shp[si]; if(Math.abs(it2._sx-o._sx)<(it2.hw+o.hw)&&Math.abs(it2._sy-o._sy)<15){ clash=true; break; } } it2.sp.visible=!clash; if(!clash)_shp.push(it2); }
   for(var pi2=0;pi2<poiItems.length;pi2++){ if(poiItems[pi2].lab) poiItems[pi2].lab.visible=(d<poiItems[pi2].labD); } }
 setMode('cont');
 (function animate(){ requestAnimationFrame(animate);
