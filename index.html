@@ -1320,6 +1320,8 @@ var moBld=overlay('th_bld.png'); moBld.renderOrder=7; moBld.material.opacity=0.5
 var overlaysLoaded=false;
 function ensureOverlays(){ if(overlaysLoaded)return; overlaysLoaded=true; toast('主題圖層載入中…');
   [moAgri,moCanal,moRoad,moBld].forEach(function(mo){ mo.material.map=loadTex(mo.userData.url+TV); mo.material.needsUpdate=true; }); }
+/* item4：boot 後背景預抓主題貼圖，切到主題時命中快取、免等待 */
+setTimeout(function(){ if(overlaysLoaded)return; ['th_agri.png','th_canal.png','th_road.png','th_bld.png'].forEach(function(u){ var _i=new Image(); _i.src=u+TV; }); },2500);
 /* 歷史地圖 overlay（中研院臺灣百年歷史地圖，烘焙靜態檔） */
 var moHist=overlay('hist'); moHist.renderOrder=5; moHist.material.opacity=1.0;
 var histSel='1904',histTex={};
