@@ -1324,6 +1324,8 @@ function ensureOverlays(){ if(overlaysLoaded)return; overlaysLoaded=true; toast(
 setTimeout(function(){ if(overlaysLoaded)return; ['th_agri.png','th_canal.png','th_road.png','th_bld.png'].forEach(function(u){ var _i=new Image(); _i.src=u+TV; }); },2500);
 /* 歷史地圖 overlay（中研院臺灣百年歷史地圖，烘焙靜態檔） */
 var moHist=overlay('hist'); moHist.renderOrder=5; moHist.material.opacity=1.0;
+/* item3：歷史貼圖依高程淡出（避免高山留白處白頂突天）——頂點色 alpha，僅作用於 moHist，與 EX 無關 */
+(function(){ var _nv=positions.length/3,_hc=new Float32Array(_nv*4),_lo=1800,_hi=2200; for(var _v=0;_v<_nv;_v++){ var _e=(_v<W*H)?heights[_v]:0,_t=(_e-_lo)/(_hi-_lo); _t=_t<0?0:(_t>1?1:_t); var _sm=_t*_t*(3-2*_t); _hc[_v*4]=1;_hc[_v*4+1]=1;_hc[_v*4+2]=1;_hc[_v*4+3]=1-_sm; } geoTop.setAttribute('color',new THREE.BufferAttribute(_hc,4)); moHist.material.vertexColors=true; moHist.material.needsUpdate=true; })();
 var histSel='1904',histTex={};
 var HIST_HI=(renderer.capabilities.maxTextureSize>=8192)&&!isMobile&&((navigator.deviceMemory||8)>=8);
 function ensureHist(){
