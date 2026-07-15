@@ -1245,7 +1245,7 @@ var CFG = {
              { src: "rmaj", color: 0xf08a3c, opacity: 0.92, off: 18 } ]
   },
   /* 主河道貼地緞帶（大甲溪・大安溪加粗）：RIVERS[].pts */
-  ribbon: { widthKm: 0.22, color: 0x2f96dd, off: 15, opacity: 0.88 },
+  ribbon: { widthKm: 0.40, color: 0x1a8ad4, off: 15, opacity: 0.92 },
 
   /* 標籤樣式：makeSprite(text, fs, fill, hh)；tier→LOD 顯示距離見 lod */
   labels: {
@@ -1516,7 +1516,7 @@ function addRibbon(pts,wKm,color,off){ var n=pts.length; if(n<2)return;
     gnd[i*2+1]=inside(xb,zb)?sampleElev(xb,zb):sampleElev(x,z);
     if(i<n-1){ var q=i*2; idx.push(q,q+1,q+2,q+1,q+3,q+2); } }
   var g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setIndex(idx);
-  var m=new THREE.MeshBasicMaterial({color:color,transparent:true,opacity:0.88,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
+  var m=new THREE.MeshBasicMaterial({color:color,transparent:true,opacity:CFG.ribbon.opacity,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
   m.color.convertSRGBToLinear();
   var rm=new THREE.Mesh(g,m); rm.renderOrder=4; rm.frustumCulled=false; gWater.add(rm);
   ribbonItems.push({geo:g,gnd:gnd,off:off});
