@@ -1222,7 +1222,7 @@ var CFG = {
   /* 檢視模式（右上 segmented control） */
   modes: [
     { id: "cont",  label: "等高線", kind: "terrain",  colorAttr: "hyps" },
-    { id: "sat",   label: "衛星",   kind: "texture",  tint: 0x2a2a2a,
+    { id: "sat",   label: "衛星",   kind: "texture",  /* v23.2：移除 tint 0x2a2a2a（舊 EOX 時代的壓暗參數，會把 ESRI 影像壓暗 6 倍） */
       src: { lo: "sat.jpg", hi: "sat4096.jpg" } },     /* hi 選用：!mobile && maxTexSize>=8192 && deviceMemory>=4 */
     { id: "theme", label: "主題",   kind: "terrain",  colorAttr: "grey", prefetch: ["th_agri","th_canal","th_road","th_bld"] },
     { id: "hist",  label: "歷史",   kind: "overlay",  colorAttr: "grey", opacitySlider: true,
@@ -1301,7 +1301,7 @@ var CFG = {
     { id: "supply",  label: "資材行", type: "poi",     modes: ["theme"],  on: false }
   ],
 
-  textureVersion: "?v=21",  /* 貼圖快取破解，改貼圖時遞增（v21：去雲衛星＋平滑水圳） */
+  textureVersion: "?v=22",  /* 貼圖快取破解，改貼圖時遞增（v22：水圳細線版＋歷史無圖資區灰底） */
   credits: "地形 AWS Terrain Tiles｜衛星 EOX s2cloudless｜歷史 中研院臺灣百年歷史地圖｜農業/建物/國土利用 內政部國土測繪中心｜水圳 農田水利署｜廟宇 內政部宗教資訊系統｜資材行 葉守禮 2021 論文附錄｜© 葉守禮 研究地圖"
 };
 if (typeof module !== "undefined") module.exports = CFG;
