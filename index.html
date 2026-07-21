@@ -1301,7 +1301,7 @@ var CFG = {
     { id: "supply",  label: "資材行", type: "poi",     modes: ["theme"],  on: false }
   ],
 
-  textureVersion: "?v=22",  /* 貼圖快取破解，改貼圖時遞增（v22：水圳細線版＋歷史無圖資區灰底） */
+  textureVersion: "?v=23",  /* 貼圖快取破解，改貼圖時遞增（v23：水圳模糊橋接平滑細線，去毛邊去斷裂） */
   credits: "地形 AWS Terrain Tiles｜衛星 EOX s2cloudless｜歷史 中研院臺灣百年歷史地圖｜農業/建物/國土利用 內政部國土測繪中心｜水圳 農田水利署｜廟宇 內政部宗教資訊系統｜資材行 葉守禮 2021 論文附錄｜© 葉守禮 研究地圖"
 };
 if (typeof module !== "undefined") module.exports = CFG;
@@ -1549,59 +1549,67 @@ addBundle(VECT.trk,CFG.vectors.roads[0].color,CFG.vectors.roads[0].opacity,CFG.v
 addBundle(VECT.rmin,CFG.vectors.roads[1].color,CFG.vectors.roads[1].opacity,CFG.vectors.roads[1].off,gRoads);
 addBundle(VECT.rmaj,CFG.vectors.roads[2].color,CFG.vectors.roads[2].opacity,CFG.vectors.roads[2].off,gRoads);
 var ribbonItems=[];
-function addRibbon(pts,wKm,color,off){ var n=pts.length; if(n<2)return;
-  var pos=new Float32Array(n*2*3), gnd=new Float32Array(n*2), idx2=[];
-  /* 河面橫向水平＋縱向平滑：兩側頂點共用中心線高程（免河階崖差拉出直立三角形），
-     中心線再做兩輪三點移動平均（免峽谷陡坎拉出直立面） */
+/* 河面緞帶 = 折線的「粗筆劃」（Minkowski 和：折線 ⊕ 半徑 hw 的圓盤）。
+   構法＝逐段獨立矩形 ＋ 每頂點圓盤接頭。每個圖元都是凸的、彼此獨立，
+   聯集恆等於「離中心線 ≤ hw 的區域」，永遠不會自我交疊成領結三角形——
+   徹底根治舊版連續三角帶在急彎處摺疊外露的藍色三角形。 */
+function addRibbon(pts,wKm,color,off){
+  /* 1) 投影＋去除近重合點（舊資料有 minseg≈0 的重複點，會壞掉法線與接頭） */
+  var raw=[];
+  for(var r0=0;r0<pts.length;r0++){ var X=lonToX(pts[r0][0]), Z=latToZ(pts[r0][1]);
+    if(raw.length===0 || Math.hypot(X-raw[raw.length-1][0], Z-raw[raw.length-1][1])>0.008) raw.push([X,Z]); }
+  var n=raw.length; if(n<2) return;
+  var xs=new Float32Array(n), zs=new Float32Array(n);
+  for(var q0=0;q0<n;q0++){ xs[q0]=raw[q0][0]; zs[q0]=raw[q0][1]; }
+  /* 2) 中心線高程：取樣＋兩輪平滑＋順流單調下降＋坡降上限 50m/km（免直立崖面） */
   var ge=new Float32Array(n);
-  for(var e=0;e<n;e++) ge[e]=sampleElev(lonToX(pts[e][0]),latToZ(pts[e][1]));
-  for(var ps=0;ps<2;ps++){ var ge2=new Float32Array(n); ge2[0]=ge[0]; ge2[n-1]=ge[n-1];
-    for(var e2=1;e2<n-1;e2++) ge2[e2]=(ge[e2-1]+ge[e2]+ge[e2+1])/3; ge=ge2; }
-  /* 河面縱向單調下降（running-min 往下游）夾掉 DEM 突起，
-     再以坡降上限 50 m/km 攤平陡坎（堰壩/峽谷跌水），避免緞帶出現直立面 */
-  if(n>2){ var segKm=new Float32Array(n-1);
-    for(var sl=0;sl<n-1;sl++){ var sdx=lonToX(pts[sl+1][0])-lonToX(pts[sl][0]), sdz=latToZ(pts[sl+1][1])-latToZ(pts[sl][1]);
-      segKm[sl]=Math.sqrt(sdx*sdx+sdz*sdz); }
-    var MAXG=50; /* m per km */
-    if(ge[0]>=ge[n-1]){ for(var mv=1;mv<n;mv++){ if(ge[mv]>ge[mv-1]) ge[mv]=ge[mv-1];
-        if(ge[mv]<ge[mv-1]-MAXG*segKm[mv-1]) ge[mv]=ge[mv-1]-MAXG*segKm[mv-1]; } }
-    else { for(var mw=n-2;mw>=0;mw--){ if(ge[mw]>ge[mw+1]) ge[mw]=ge[mw+1];
-        if(ge[mw]<ge[mw+1]-MAXG*segKm[mw]) ge[mw]=ge[mw+1]-MAXG*segKm[mw]; } } }
-  /* 自適應寬度：向兩側取樣地形，撞壁（高過河面+off+4）或懸空跨溝（低過河面 30m）
-     就收窄該側，避免寬緞帶在坡面外露成藍色三角形塊 */
-  var CLIMB=(off||0)+4, hw=wKm/2, wA=new Float32Array(n), wB=new Float32Array(n);
-  for(var wi=0;wi<n;wi++){ var wx=lonToX(pts[wi][0]), wz=latToZ(pts[wi][1]);
-    var w0=wi>0?wi-1:wi, w1=wi<n-1?wi+1:wi;
-    var wdx=lonToX(pts[w1][0])-lonToX(pts[w0][0]), wdz=latToZ(pts[w1][1])-latToZ(pts[w0][1]);
-    var wdl=Math.sqrt(wdx*wdx+wdz*wdz)||1e-6, upx=-wdz/wdl, upz=wdx/wdl;
-    var fa=1, fb=1, DROP=15, NS=8;
+  for(var e=0;e<n;e++) ge[e]=sampleElev(xs[e],zs[e]);
+  for(var ps=0;ps<2;ps++){ var g2=new Float32Array(n); g2[0]=ge[0]; g2[n-1]=ge[n-1];
+    for(var e2=1;e2<n-1;e2++) g2[e2]=(ge[e2-1]+ge[e2]+ge[e2+1])/3; ge=g2; }
+  if(n>2){ var seg=new Float32Array(n-1);
+    for(var s1=0;s1<n-1;s1++) seg[s1]=Math.hypot(xs[s1+1]-xs[s1], zs[s1+1]-zs[s1]);
+    var MAXG=50, fwd=ge[0]>=ge[n-1];
+    if(fwd){ for(var m1=1;m1<n;m1++){ if(ge[m1]>ge[m1-1])ge[m1]=ge[m1-1]; if(ge[m1]<ge[m1-1]-MAXG*seg[m1-1])ge[m1]=ge[m1-1]-MAXG*seg[m1-1]; } }
+    else   { for(var m2=n-2;m2>=0;m2--){ if(ge[m2]>ge[m2+1])ge[m2]=ge[m2+1]; if(ge[m2]<ge[m2+1]-MAXG*seg[m2])ge[m2]=ge[m2+1]-MAXG*seg[m2]; } } }
+  /* 3) 每頂點自適應半寬：向兩側取樣地形，撞壁（>河面+off+4）或懸空跨溝（<河面-15）就收窄 */
+  var CLIMB=(off||0)+4, DROP=15, hwMax=wKm/2, NS=8, hwv=new Float32Array(n);
+  for(var wi=0;wi<n;wi++){ var w0=wi>0?wi-1:wi, w1=wi<n-1?wi+1:wi;
+    var ddx=xs[w1]-xs[w0], ddz=zs[w1]-zs[w0], ddl=Math.hypot(ddx,ddz)||1e-6, ux=-ddz/ddl, uz=ddx/ddl, f=1;
     for(var fs=1;fs<=NS;fs++){ var fr=fs/NS;
-      var sA=sampleElev(wx+upx*hw*fr,wz+upz*hw*fr), sB=sampleElev(wx-upx*hw*fr,wz-upz*hw*fr);
-      if(fr<=fa && (sA>ge[wi]+CLIMB || sA<ge[wi]-DROP)) fa=(fs-1)/NS;
-      if(fr<=fb && (sB>ge[wi]+CLIMB || sB<ge[wi]-DROP)) fb=(fs-1)/NS; }
-    wA[wi]=fa*hw; wB[wi]=fb*hw; }
-  /* 平滑寬度但以原始上限夾住：平滑只能收窄、不得把邊緣重新推上坡壁 */
-  var wAr=wA.slice(0), wBr=wB.slice(0);
-  for(var wp=0;wp<2;wp++){ for(var ws=1;ws<n-1;ws++){
-    wA[ws]=Math.min((wA[ws-1]+wA[ws]+wA[ws+1])/3, wAr[ws]);
-    wB[ws]=Math.min((wB[ws-1]+wB[ws]+wB[ws+1])/3, wBr[ws]); } }
-  for(var i=0;i<n;i++){ var x=lonToX(pts[i][0]), z=latToZ(pts[i][1]);
-    var i0=i>0?i-1:i, i1=i<n-1?i+1:i;
-    var dx=lonToX(pts[i1][0])-lonToX(pts[i0][0]), dz=latToZ(pts[i1][1])-latToZ(pts[i0][1]);
-    var dl=Math.sqrt(dx*dx+dz*dz)||1e-6, px2=-dz/dl, pz2=dx/dl;
-    var xa=x+px2*wA[i],za=z+pz2*wA[i],xb=x-px2*wB[i],zb=z-pz2*wB[i];
-    pos[(i*2)*3]=xa; pos[(i*2)*3+2]=za; pos[(i*2+1)*3]=xb; pos[(i*2+1)*3+2]=zb;
-    gnd[i*2]=ge[i]; gnd[i*2+1]=ge[i];
-    /* 谷地容不下緞帶（可用寬度 <30%）的段落不出面，交由細線河道呈現 */
-    var MINW=wKm*0.3;
-    if(i<n-1 && wA[i]+wB[i]>=MINW && wA[i+1]+wB[i+1]>=MINW){ var q=i*2; idx2.push(q,q+1,q+2,q+1,q+3,q+2); } }
-  var g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setIndex(idx2);
+      var sA=sampleElev(xs[wi]+ux*hwMax*fr, zs[wi]+uz*hwMax*fr), sB=sampleElev(xs[wi]-ux*hwMax*fr, zs[wi]-uz*hwMax*fr);
+      if(fr<=f && (sA>ge[wi]+CLIMB || sA<ge[wi]-DROP || sB>ge[wi]+CLIMB || sB<ge[wi]-DROP)) f=(fs-1)/NS; }
+    hwv[wi]=f*hwMax; }
+  var hwr=hwv.slice(0);   /* 平滑寬度但只准收窄，不得把邊緣重新推上坡壁 */
+  for(var wp=0;wp<2;wp++) for(var ws=1;ws<n-1;ws++) hwv[ws]=Math.min((hwv[ws-1]+hwv[ws]+hwv[ws+1])/3, hwr[ws]);
+  var MINHW=hwMax*0.15;
+  /* 4) 組幾何：逐段矩形 ＋ 每頂點圓盤接頭（皆凸、互不摺疊） */
+  var posArr=[], gndArr=[], idx=[];
+  function V(x,z,y){ var k=gndArr.length; posArr.push(x,0,z); gndArr.push(y); return k; }
+  for(var i=0;i<n-1;i++){ var hi=hwv[i], hj=hwv[i+1];
+    if(hi<MINHW && hj<MINHW) continue;   /* 谷地容不下緞帶：整段不出面，交由細線河道呈現 */
+    var hia=Math.max(hi,1e-4), hja=Math.max(hj,1e-4);
+    var sdx=xs[i+1]-xs[i], sdz=zs[i+1]-zs[i], sl=Math.hypot(sdx,sdz)||1e-6, nx=-sdz/sl, nz=sdx/sl;
+    var a0=V(xs[i]+nx*hia,   zs[i]+nz*hia,   ge[i]);
+    var a1=V(xs[i]-nx*hia,   zs[i]-nz*hia,   ge[i]);
+    var b0=V(xs[i+1]+nx*hja, zs[i+1]+nz*hja, ge[i+1]);
+    var b1=V(xs[i+1]-nx*hja, zs[i+1]-nz*hja, ge[i+1]);
+    idx.push(a0,a1,b0, a1,b1,b0);
+  }
+  var K=10;   /* 每頂點圓盤：填補彎道外側缺口＋圓角接頭，使聯集平滑且恆在半寬內 */
+  for(var j=0;j<n;j++){ var hj2=hwv[j]; if(hj2<MINHW) continue;
+    var c=V(xs[j],zs[j],ge[j]), prev=-1;
+    for(var a=0;a<=K;a++){ var th=a/K*Math.PI*2;
+      var vk=V(xs[j]+Math.cos(th)*hj2, zs[j]+Math.sin(th)*hj2, ge[j]);
+      if(prev>=0) idx.push(c,prev,vk); prev=vk; }
+  }
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(posArr),3)); g.setIndex(idx);
   var m=new THREE.MeshBasicMaterial({color:color,transparent:true,opacity:CFG.ribbon.opacity,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
   m.color.convertSRGBToLinear();
-  /* stencil 遮罩：緞帶在急彎處自我交疊時，同一像素只混色一次，避免出現深色三角形塊 */
+  /* stencil：矩形與圓盤重疊處同一像素只混色一次，維持均勻不透明度 */
   m.stencilWrite=true; m.stencilRef=1; m.stencilFunc=THREE.NotEqualStencilFunc; m.stencilZPass=THREE.ReplaceStencilOp;
   var rm=new THREE.Mesh(g,m); rm.renderOrder=4; rm.frustumCulled=false; gWater.add(rm);
-  ribbonItems.push({geo:g,gnd:gnd,off:off});
+  ribbonItems.push({geo:g,gnd:new Float32Array(gndArr),off:off});
 }
 if(typeof RIVERS!=='undefined'){ RIVERS.forEach(function(r){
   var pts=[]; r.pts.forEach(function(p){ if(inside(lonToX(p[0]),latToZ(p[1]))) pts.push(p); });
