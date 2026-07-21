@@ -1237,6 +1237,7 @@ var CFG = {
     land:  { src: "landuse.png", renderOrder: 3, opacity: 1.0 },
     hist:  { src: "hist", renderOrder: 5, opacity: 1.0,
              hi: { enable: "maxTexSize>=8192 && !mobile && deviceMemory>=8", quads: ["a","b","c","d"], canvas: 8192 },
+             masks: ["1904","1921"],  /* v23.4：無圖幅區以 alphaMap 透空，露出灰階暈渲地形（1989 全覆蓋免遮罩） */
              periods: [
                { id: "1904", label: "1904 堡圖（明治）" },
                { id: "1921", label: "1921 陸測（大正）" },
@@ -1476,8 +1477,19 @@ if(_wtCfg){(function(){ var _nv2=positions.length/3,_hc=new Float32Array(_nv2*4)
 var histSel=CFG.overlays.hist&&CFG.overlays.hist.defaultPeriod?CFG.overlays.hist.defaultPeriod:'1904';
 var histTex={};
 var HIST_HI=CFG.overlays.hist&&CFG.overlays.hist.hi&&(renderer.capabilities.maxTextureSize>=8192)&&!isMobile&&((navigator.deviceMemory||8)>=8);
+/* 無圖幅遮罩 alphaMap（白=有圖資、黑=透空露地形）；linear 編碼、不轉 sRGB */
+var HIST_MASKS=(CFG.overlays.hist&&CFG.overlays.hist.masks)||[], histMaskTex={};
+function loadMask(url){ var t=new THREE.TextureLoader().load(url); t.flipY=false; t.generateMipmaps=false; t.minFilter=THREE.LinearFilter; t.magFilter=THREE.LinearFilter; t.wrapS=THREE.ClampToEdgeWrapping; t.wrapT=THREE.ClampToEdgeWrapping; t.anisotropy=maxAniso; return t; }
+function applyHistMask(sel){
+  if(HIST_MASKS.indexOf(sel)>=0){
+    if(!histMaskTex[sel]) histMaskTex[sel]=loadMask('hist'+sel+'_mask.png'+TV);
+    moHist.material.alphaMap=histMaskTex[sel];
+  } else { moHist.material.alphaMap=null; }
+  moHist.material.needsUpdate=true;
+}
 function ensureHist(){
   var sel=histSel;
+  applyHistMask(sel);
   if(HIST_HI){
     toast('歷史地圖載入中…（8K 高解析）');
     var quads=['a','b','c','d'],imgs={},done=0,failed=false;
