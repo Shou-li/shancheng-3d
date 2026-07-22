@@ -73,7 +73,7 @@ canvas{display:block;touch-action:none}
   <div id="themeopt" class="sec" style="display:none">
     <div class="h">主題圖層</div>
     <div class="togs" style="font-size:12px"><label><input type="checkbox" id="ck_bld" checked> 建築</label><label><input type="checkbox" id="ck_agri" checked> 農業</label><label><input type="checkbox" id="ck_canal" checked> 水圳</label><label><input type="checkbox" id="ck_troad"> 道路</label><label><input type="checkbox" id="ck_land"> 國土利用</label></div>
-    <div class="togs" style="font-size:12px;margin-top:3px"><label><input type="checkbox" id="ck_temple"> 廟宇</label><label><input type="checkbox" id="ck_nonghui"> 農會</label><label><input type="checkbox" id="ck_supply"> 資材行</label></div>
+    <div class="togs" style="font-size:12px;margin-top:3px"><label><input type="checkbox" id="ck_temple"> 廟宇</label><label><input type="checkbox" id="ck_nonghui"> 農會</label><label><input type="checkbox" id="ck_supply"> 資材行</label><label><input type="checkbox" id="ck_tlab" checked> 地名</label></div>
   </div>
   <div id="histopt" class="sec" style="display:none">
     <div class="h">歷史地圖</div>
@@ -93,7 +93,7 @@ canvas{display:block;touch-action:none}
     <div class="row" style="margin-top:6px"><span class="ln" style="border-top-color:#3f9fe0"></span>河川　<span class="ln" style="border-top-color:#6fb2dd"></span>溪流</div>
     <div class="row"><span class="ln" style="border-top-color:#f08a3c"></span>主要道路 <span class="ln" style="border-top-color:#b9a071"></span>一般 <span class="ln" style="border-top-color:#a89468"></span>產業</div>
     <div class="row">▲ 山峰（附標高 m）</div>
-    <div class="row"><span class="dot"></span>山城五鄉鎮定位點　聚落</div>
+    
   </div>
   <div id="lg_theme" style="display:none">
     <div class="cap">主題圖層</div>
@@ -106,7 +106,7 @@ canvas{display:block;touch-action:none}
     <div class="row"><span class="ln" style="border-top-color:#d6a05a;border-top-width:2px"></span>鄉道・巷弄・產業道路</div>
     <div class="row"><span style="display:inline-block;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:12px solid #1a4fae"></span>省道路徽（如 台3・台8・台21）</div>
     <div class="row" style="margin-top:6px"><span class="dot" style="background:#e01414"></span>廟宇・土地公祠　<span class="dot" style="background:#ffffff"></span>農會　<span class="dot" style="background:#ffd21f"></span>資材行</div>
-    <div class="row"><span class="dot"></span>山城五鄉鎮定位點</div>
+    
     <div id="lu_legend" style="display:none;margin-top:6px;border-top:1px solid rgba(255,255,255,.15);padding-top:5px">
       <div class="cap">土地使用現況（NLSC 國土利用調查）</div>
       <div class="row"><span class="dot" style="background:#63c03b"></span>農業　<span class="dot" style="background:#38a800"></span>森林</div>
@@ -1265,14 +1265,15 @@ var CFG = {
                tierByEle: [ [2000, 0], [1200, 1] ], tierElse: 2 },       /* ele>=2000→0, >=1200→1, else 2 */
     poi:     { fs: 22, fill: "#20242c", hh: 0.50, off: 0.42 }
   },
-  /* 貼地紅盤定位點：五鎮（addGroundMarker，白環紅心） */
-  groundMarker: { ringR: 0.062, dotR: 0.046, ring: 0xffffff, dot: 0xd11414 },
+  /* 貼地定位點：五鎮（addGroundMarker，白環紅心）。
+     ⚠️ show:false＝使用者明確要求移除五鎮下方白點（2026-07-21 第二次交辦「請不要再犯」）——永遠不要改回 true。 */
+  groundMarker: { show: false, ringR: 0.062, dotR: 0.046, ring: 0xffffff, dot: 0xd11414 },
   /* 省道路徽 makeShield：三角＋路號 */
   shield: { fill: "#12408f", stroke: "#ffffff", scale: 0.023 },
 
   /* POI 點層 buildPoi(list, hex, rad, labeled, labD, cell)；ring=rad*1.4 */
   poi: {
-    temple:  { color: 0xe01414, rad: 0.028, labeled: false },                       /* v23修7：廟宇紅 */
+    temple:  { color: 0xe01414, rad: 0.028, labeled: false, ring: 0x8a0b0b },       /* v23修7 廟宇紅；v23.6 外環深紅（原白環蓋過小紅點、視覺呈白） */
     nonghui: { color: 0xffffff, rad: 0.05,  labeled: true, labD: 32 },              /* v23修7：農會白 */
     supply:  { color: 0xffd21f, rad: 0.05,  labeled: true, labD: 15, cell: 0.45 }   /* v23修7：資材行黃 */
   },
@@ -1302,7 +1303,7 @@ var CFG = {
     { id: "supply",  label: "資材行", type: "poi",     modes: ["theme"],  on: false }
   ],
 
-  textureVersion: "?v=23",  /* 貼圖快取破解，改貼圖時遞增（v23：水圳模糊橋接平滑細線，去毛邊去斷裂） */
+  textureVersion: "?v=24",  /* v24：衛星灰塊/漏雲/色差修復＋水圳T8收細平滑搭橋 */
   credits: "地形 AWS Terrain Tiles｜衛星 EOX s2cloudless｜歷史 中研院臺灣百年歷史地圖｜農業/建物/國土利用 內政部國土測繪中心｜水圳 農田水利署｜廟宇 內政部宗教資訊系統｜資材行 葉守禮 2021 論文附錄｜© 葉守禮 研究地圖"
 };
 if (typeof module !== "undefined") module.exports = CFG;
@@ -1675,7 +1676,8 @@ if(typeof MARKERS!=='undefined'){
   MARKERS.forEach(function(m){
     var town=m[0],lat=m[2],lon=m[3];
     addLabel(town,lon,lat,CFG.labels.markers.fs,CFG.labels.markers.fill,CFG.labels.markers.hh,CFG.labels.markers.off,CFG.labels.markers.tier);
-    addGroundMarker(lon,lat);
+    /* 鄉鎮定位點由 manifest groundMarker.show 控制（山城已停用——使用者要求移除，勿再開） */
+    if(!(CFG.groundMarker&&CFG.groundMarker.show===false)) addGroundMarker(lon,lat);
     SKIP[town]=1; SKIP[town+'區']=1; SKIP[town+'鎮']=1;
   });
   VECT.places.forEach(function(p){
@@ -1739,19 +1741,20 @@ if(typeof PEAKS!=='undefined'){
 /* POI theme point layers (shancheng: 廟宇/農會/資材行) */
 var poiItems=[], gTemple=null, gNonghui=null, gSupply=null;
 if(typeof POI_TEMPLE!=='undefined'&&CFG.poi){
-  function makePoiDisc(hex,rad){
+  function makePoiDisc(hex,rad,ringHex){
+    /* ringHex 可依 POI 類別自訂外環色（預設白）；小點的白環會蓋過主色，如廟宇需配深色同系環 */
     var g=new THREE.Group();
-    var rC=new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false,transparent:true,opacity:0.95}); rC.color.convertSRGBToLinear();
+    var rC=new THREE.MeshBasicMaterial({color:(ringHex!=null?ringHex:0xffffff),depthTest:false,transparent:true,opacity:0.95}); rC.color.convertSRGBToLinear();
     var dC=new THREE.MeshBasicMaterial({color:hex,depthTest:false}); dC.color.convertSRGBToLinear();
     var ring=new THREE.Mesh(new THREE.CircleGeometry(rad*1.4,26),rC); ring.rotation.x=-Math.PI/2; ring.renderOrder=1006; ring.position.y=0.002;
     var dot=new THREE.Mesh(new THREE.CircleGeometry(rad,26),dC); dot.rotation.x=-Math.PI/2; dot.renderOrder=1007; dot.position.y=0.004;
     g.add(ring); g.add(dot); return g;
   }
-  function buildPoi(list,hex,rad,labeled,labD,cell){
+  function buildPoi(list,hex,rad,labeled,labD,cell,ringHex){
     var grp=new THREE.Group(); scene.add(grp); grp.visible=false;
     var occ={};
     list.forEach(function(p){ var x=lonToX(p.lon),z=latToZ(p.lat); if(!inside(x,z))return;
-      var d=makePoiDisc(hex,rad); grp.add(d);
+      var d=makePoiDisc(hex,rad,ringHex); grp.add(d);
       var lab=null;
       if(labeled&&p.n){ var ok=true;
         if(cell){ var ck=Math.floor(x/cell)+'_'+Math.floor(z/cell); if(occ[ck])ok=false; else occ[ck]=1; }
@@ -1760,9 +1763,9 @@ if(typeof POI_TEMPLE!=='undefined'&&CFG.poi){
     });
     return grp;
   }
-  gTemple=buildPoi(POI_TEMPLE,CFG.poi.temple.color,CFG.poi.temple.rad,CFG.poi.temple.labeled);
-  if(typeof POI_NONGHUI!=='undefined') gNonghui=buildPoi(POI_NONGHUI,CFG.poi.nonghui.color,CFG.poi.nonghui.rad,CFG.poi.nonghui.labeled,CFG.poi.nonghui.labD);
-  if(typeof POI_SUPPLY!=='undefined') gSupply=buildPoi(POI_SUPPLY,CFG.poi.supply.color,CFG.poi.supply.rad,CFG.poi.supply.labeled,CFG.poi.supply.labD,CFG.poi.supply.cell);
+  gTemple=buildPoi(POI_TEMPLE,CFG.poi.temple.color,CFG.poi.temple.rad,CFG.poi.temple.labeled,undefined,undefined,CFG.poi.temple.ring);
+  if(typeof POI_NONGHUI!=='undefined') gNonghui=buildPoi(POI_NONGHUI,CFG.poi.nonghui.color,CFG.poi.nonghui.rad,CFG.poi.nonghui.labeled,CFG.poi.nonghui.labD,undefined,CFG.poi.nonghui.ring);
+  if(typeof POI_SUPPLY!=='undefined') gSupply=buildPoi(POI_SUPPLY,CFG.poi.supply.color,CFG.poi.supply.rad,CFG.poi.supply.labeled,CFG.poi.supply.labD,CFG.poi.supply.cell,CFG.poi.supply.ring);
 }
 /* ===== My Maps story layer (damaopu) ===== */
 var gMy=null, myGrp={}, myLabels=[], myItems=[], myClouds=[];
@@ -2005,6 +2008,7 @@ var _ckRoad=document.getElementById('ck_road'); if(_ckRoad) _ckRoad.addEventList
 var _ckWat=document.getElementById('ck_wat'); if(_ckWat) _ckWat.addEventListener('change',function(e){ gWater.visible=e.target.checked; });
 var _ckPeak=document.getElementById('ck_peak'); if(_ckPeak) _ckPeak.addEventListener('change',function(e){ if(gPeaks) gPeaks.visible=(mode==='cont')&&e.target.checked; });
 var _ckSlab=document.getElementById('ck_slab'); if(_ckSlab) _ckSlab.addEventListener('change',function(e){ if(mode==='sat') gLabels.visible=e.target.checked; });
+var _ckTlab=document.getElementById('ck_tlab'); if(_ckTlab) _ckTlab.addEventListener('change',function(e){ if(mode==='theme') gLabels.visible=e.target.checked; });
 var _ckHlab=document.getElementById('ck_hlab'); if(_ckHlab) _ckHlab.addEventListener('change',function(e){ if(mode==='hist') gLabels.visible=e.target.checked; });  /* v23修9 */
 if(HAS_STORY){
   var _stOrder2=CFG.story.order||Object.keys(CFG.story.groups);
@@ -2074,7 +2078,7 @@ function setMode(m){ mode=m;
     var l=$id('ck_lab'); gLabels.visible=l?l.checked:true;
   } else if(m==='theme'){
     gWater.visible=true; gRoads.visible=false;
-    gLabels.visible=true;
+    var tl=$id('ck_tlab'); gLabels.visible=tl?tl.checked:true;
   } else if(m==='sat'){
     var sl=$id('ck_slab'); gLabels.visible=sl?sl.checked:false;
   } else {
